@@ -1,0 +1,82 @@
+apply plugin: 'com.android.application'
+
+def projectPropsFile = rootProject.file('project.properties')
+def Properties projectProps = new Properties()
+
+def code
+
+android {
+    if (projectPropsFile.canRead()) {
+        projectProps.load(new FileInputStream(projectPropsFile))
+    } else {
+        throw new GradleException("Could not read project.properties!")
+    }
+
+    compileSdkVersion 23
+    buildToolsVersion "23.0.1"
+
+    defaultConfig {
+        applicationId "com.example.drillman.incimentversiongradle"
+        minSdkVersion 15
+        targetSdkVersion 23
+        versionCode code
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile rootProject.file('testKey')
+            storePassword projectProps['STORE_PASSWORD']
+            keyAlias projectProps['KEY_ALIAS']
+            keyPassword projectProps['KEY_PASSWORD']
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ".d"
+            versionNameSuffix "-debug"
+
+            buildConfigField("String", "SERVER_URL", '"debugserver.ru"')
+        }
+
+        release {
+            signingConfig signingConfigs.release
+
+            buildConfigField("String", "SERVER_URL", '"release.ru"')
+
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    testCompile 'junit:junit:4.12'
+    compile 'com.android.support:appcompat-v7:23.0.1'
+    compile 'com.android.support:design:23.0.1'
+}
+
+task incrementVersionCode << {
+    code = projectProps['VERSION_CODE'].toInteger() + 1
+
+    projectProps['VERSION_CODE'] = code.toString()
+    projectProps.store(projectPropsFile.newWriter(), null)
+
+}
+
+task release << {
+    println(":release - Build and Version Increment")
+}
+
+task debug << {
+    println(":debug - Build")
+}
+incrementVersionCode {}.mustRunAfter build
+
+debug.dependsOn assembleDebug
+
+release.dependsOn assembleRelease
+release.dependsOn incrementVersionCode
